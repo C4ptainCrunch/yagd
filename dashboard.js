@@ -1,7 +1,7 @@
 var include = function(url, callback){
     var script = document.createElement('script');
     script.type = 'text/javascript';
-    script.src = url + '?' + (new Date().getTime());
+    script.src = url;
     if (callback) {
         script.onreadystatechange = callback;
         script.onload = script.onreadystatechange;
@@ -36,13 +36,13 @@ var metrictodict = function(metric){
 }
 var dash_path = getParameterByName("dashboard", null);
 if(dash_path !== null){
-  include(dash_path + '.js', function() {
+  include("dashboards/" + dash_path + '.js', function() {
     compression = getParameterByName("compression", 1)
     var context = cubism.context()
         .step( 1 * 60 * 1000 * compression)   // 1 minute
         .size(960);
 
-    var graphite = context.graphite("http://graphite.partou.se");
+    var graphite = context.graphite(url);
     var horizon = context.horizon();
 
     var body = document.getElementsByTagName('body')[0];
@@ -56,10 +56,12 @@ if(dash_path !== null){
       subtitletag.appendChild(document.createTextNode(key));
       body.appendChild(subtitletag);
 
+      var key_hash = key.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0);
+
       var dashtag = document.createElement('div');
-      dashtag.id = "dashboard-" + key
+      dashtag.id = "dashboard-" + key_hash;
       body.appendChild(dashtag);
-      var id = d3.select("#dashboard-" + key);
+      var id = d3.select("#dashboard-" + key_hash);
       var metrics = dashboards[key]
 
       id.append("div")
