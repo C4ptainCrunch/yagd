@@ -9,44 +9,85 @@ var include = function(url, callback){
     document.getElementsByTagName('head')[0].appendChild(script);
 }
 
-include('bill.js', function() {
+var getParameterByName = function(name, replacement) {
+    replacement = typeof replacement !== 'undefined' ? replacement : "";
+    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+        results = regex.exec(location.search);
+    return results == null ? replacement : decodeURIComponent(results[1].replace(/\+/g, " "));
+}
 
-  var context = cubism.context()
-      .step( 1 * 60 * 1000 )   // 1 minute
-      .size(960);  // 1 * 960 = 4 hours
+var metrictodict = function(metric){
+  if(!metric.hasOwnProperty("query")){
+    var ret = {
+      query: metric,
+      name: metric,
+      height: 40
+    }
+  }
+  else{
+    var ret = {
+      query: metric.query,
+      name: metric.hasOwnProperty("name") ? metric.name : metric.query,
+      height: metric.hasOwnProperty("height") ? metric.height : 40
+    }
+  }
+  return ret;
+}
+var dash_path = getParameterByName("dashboard", null);
+if(dash_path !== null){
+  include(dash_path + '.js', function() {
+    compression = getParameterByName("compression", 1)
+    var context = cubism.context()
+        .step( 1 * 60 * 1000 * compression)   // 1 minute
+        .size(960);
 
-  var graphite = context.graphite("http://graphite.partou.se");
-  var horizon = context.horizon().metric(graphite.metric).height(40);
+    var graphite = context.graphite("http://graphite.partou.se");
+    var horizon = context.horizon();
 
-  var body = document.getElementsByTagName('body')[0];
+    var body = document.getElementsByTagName('body')[0];
 
-  var titletag = document.createElement('h1');
-  titletag.appendChild(document.createTextNode(title));
-  body.appendChild(titletag);
+    var titletag = document.createElement('h1');
+    titletag.appendChild(document.createTextNode(title));
+    body.appendChild(titletag);
 
-  for(var key in dashboards) {
-    var subtitletag = document.createElement('h2');
-    subtitletag.appendChild(document.createTextNode(key));
-    body.appendChild(subtitletag);
+    for(var key in dashboards) {
+      var subtitletag = document.createElement('h2');
+      subtitletag.appendChild(document.createTextNode(key));
+      body.appendChild(subtitletag);
 
-    var dashtag = document.createElement('div');
-    dashtag.id = "dashboard-" + key
-    body.appendChild(dashtag);
-    var id = "#dashboard-" + key;
-    var metrics = dashboards[key]
+      var dashtag = document.createElement('div');
+      dashtag.id = "dashboard-" + key
+      body.appendChild(dashtag);
+      var id = d3.select("#dashboard-" + key);
+      var metrics = dashboards[key]
 
-    d3.select(id).append("div")
+      id.append("div")
         .attr("class", "axis")
-        .call(context.axis().orient("top"));
+        .call(
+          context.axis().orient("top")
+        );
 
-    d3.select(id).append("div")
+      id.append("div")
         .attr("class", "rule")
         .call(context.rule());
 
-    d3.select(id).selectAll(".horizon")
-        .data(metrics)
-      .enter().append("div")
+      for(var i in metrics){
+        var metric = metrictodict(metrics[i]);
+        id.selectAll(".horizon-"+i)
+        .data(
+          [graphite.metric(metric.query).summarize("avg")]
+        )
+        .enter().append("div")
         .attr("class", "horizon")
-        .call(horizon);
-  }
-});
+        .call(horizon.title(metric.name)
+          .height(metric.height)
+        );
+      }
+    }
+
+  });
+}
+else {
+  alert("No dashboard");
+}
