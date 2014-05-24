@@ -39,7 +39,7 @@ if(dash_path !== null){
   include("dashboards/" + dash_path + '.js', function() {
     compression = getParameterByName("compression", 1)
     var context = cubism.context()
-        .step( 1 * 60 * 1000 * compression)   // 1 minute
+        .step(interval * 1000 * compression)
         .size(960);
 
     var graphite = context.graphite(url);
